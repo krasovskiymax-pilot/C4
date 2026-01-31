@@ -46,6 +46,13 @@
             overflow-wrap: break-word;
         }
 
+        .memory-indicator {
+            margin: -10px 0 20px;
+            text-align: right;
+            font-size: 0.95rem;
+            color: #333;
+        }
+
         .buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -105,16 +112,27 @@
         .zero {
             grid-column: span 2;
         }
+
+        .spacer {
+            visibility: hidden;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <div class="calculator">
         <div class="display" id="display">0</div>
+        <div class="memory-indicator" id="memoryIndicator">M: 0</div>
         <div class="buttons">
             <button class="clear" onclick="clearDisplay()">C</button>
             <button class="operator" onclick="appendOperator('/')">/</button>
             <button class="operator" onclick="appendOperator('*')">×</button>
             <button class="operator" onclick="deleteLast()">⌫</button>
+
+            <button onclick="memoryAdd()">M+</button>
+            <button onclick="memoryRecall()">MR</button>
+            <button onclick="memoryClear()">MC</button>
+            <button class="spacer" tabindex="-1" aria-hidden="true"></button>
             
             <button onclick="appendNumber('7')">7</button>
             <button onclick="appendNumber('8')">8</button>
@@ -138,11 +156,17 @@
 
     <script>
         let display = document.getElementById('display');
+        let memoryIndicator = document.getElementById('memoryIndicator');
         let currentInput = '0';
         let shouldResetDisplay = false;
+        let memorySum = 0;
 
         function updateDisplay() {
             display.textContent = currentInput;
+        }
+
+        function updateMemoryIndicator() {
+            memoryIndicator.textContent = 'M: ' + memorySum;
         }
 
         function appendNumber(number) {
@@ -204,6 +228,7 @@
                     currentInput = 'Ошибка';
                 } else {
                     currentInput = result.toString();
+                    console.log('Результат:', currentInput);
                 }
                 
                 updateDisplay();
@@ -213,6 +238,50 @@
                 updateDisplay();
                 shouldResetDisplay = true;
             }
+        }
+
+        function getCurrentValue() {
+            if (currentInput === 'Ошибка') {
+                return null;
+            }
+
+            try {
+                let expression = currentInput.replace(/×/g, '*');
+                if (/[+\-*/]$/.test(expression)) {
+                    return null;
+                }
+
+                const result = Function('"use strict"; return (' + expression + ')')();
+                if (isNaN(result) || !isFinite(result)) {
+                    return null;
+                }
+
+                return result;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function memoryAdd() {
+            const value = getCurrentValue();
+            if (value === null) {
+                return;
+            }
+
+            memorySum += value;
+            updateMemoryIndicator();
+            shouldResetDisplay = true;
+        }
+
+        function memoryRecall() {
+            currentInput = memorySum.toString();
+            updateDisplay();
+            shouldResetDisplay = true;
+        }
+
+        function memoryClear() {
+            memorySum = 0;
+            updateMemoryIndicator();
         }
 
         function clearDisplay() {
